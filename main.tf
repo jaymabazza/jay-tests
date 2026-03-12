@@ -1,6 +1,12 @@
 variable "project_id" {
-  description = "jay-personal-learning"
+  description = "The Project ID"
   type        = string
+}
+
+variable "webhook_secret" {
+  description = "The secret key for GitHub webhooks"
+  type        = string
+  sensitive   = true # This hides the value in your terminal logs
 }
 
 provider "google" {
