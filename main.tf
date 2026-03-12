@@ -1,3 +1,8 @@
+variable "project_id" {
+  description = "jay-personal-learning"
+  type        = string
+}
+
 provider "google" {
   project = var.project_id
   region  = "us-central1"
