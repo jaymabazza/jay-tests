@@ -1,59 +1,84 @@
+# 1. VARIABLE DECLARATIONS (The "Input Slots")
+# These must exist here for the TF_VAR_ environment variables in GitHub to work.
+
 variable "project_id" {
-  description = "The Project ID"
+  description = "The Google Cloud Project ID"
   type        = string
 }
 
 variable "webhook_secret" {
   description = "The secret key for GitHub webhooks"
   type        = string
-  sensitive   = true # This hides the value in your terminal logs
+  sensitive   = true # Hides the value from being printed in GitHub Action logs
 }
 
+# 2. PROVIDER CONFIGURATION
 provider "google" {
   project = var.project_id
   region  = "us-central1"
 }
 
-terraform {
-  backend "gcs" {
-    bucket  = "my-terraform-state"
-    prefix  = "terraform/state"
-  }
-}
-
-# 1. Enable Required APIs
+# 3. ENABLE APIs
+# This ensures the necessary Google services are turned on.
 resource "google_project_service" "run_api" {
-  service = "run.googleapis.com"
+  service            = "run.googleapis.com"
+  disable_on_destroy = false
 }
 
-# This creates the "my-repo" warehouse
-resource "google_artifact_registry_repository" "my-repo" {
+resource "google_project_service" "artifact_registry_api" {
+  service            = "artifactregistry.googleapis.com"
+  disable_on_destroy = false
+}
+
+# 4. ARTIFACT REGISTRY (The "Warehouse")
+# This creates the room where your Docker images will live.
+resource "google_artifact_registry_repository" "my_repo" {
+  depends_on    = [google_project_service.artifact_registry_api]
   location      = "us-central1"
   repository_id = "my-repo"
+  description   = "Docker repository for hello-app"
   format        = "DOCKER"
 }
 
-# 2. Define the Cloud Run Service
+# 5. CLOUD RUN SERVICE
+# This is the "House" for your code.
 resource "google_cloud_run_v2_service" "default" {
   name     = "hello-world-service"
   location = "us-central1"
+  ingress  = "INGRESS_TRAFFIC_ALL"
 
   template {
     containers {
-      image = "us-docker.pkg.dev/cloudrun/container/hello" # Placeholder
-      ports { container_port = 8080 }
+      # Note: On the first ever run, this image might not exist yet. 
+      # Terraform will create the service, and your GitHub Action will 
+      # immediately update it with the real image in the next step.
+      image = "us-docker.pkg.dev/cloudrun/container/hello" 
+      
+      ports {
+        container_port = 8080
+      }
+
       env {
         name  = "WEBHOOK_SECRET"
-        value = var.webhook_secret # Add this!
+        value = var.webhook_secret
       }
     }
   }
+
+  depends_on = [google_project_service.run_api]
 }
 
-# 3. Allow Public (Unauthenticated) Access
-resource "google_cloud_run_v2_service_iam_member" "public" {
+# 6. PUBLIC ACCESS (IAM)
+# This allows GitHub (or anyone) to send a POST request to your webhook URL.
+resource "google_cloud_run_v2_service_iam_member" "public_access" {
   name     = google_cloud_run_v2_service.default.name
   location = google_cloud_run_v2_service.default.location
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+# 7. OUTPUTS
+# This will print the URL of your app in the GitHub Action logs once finished.
+output "service_url" {
+  value = google_cloud_run_v2_service.default.uri
 }

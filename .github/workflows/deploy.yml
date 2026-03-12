@@ -7,15 +7,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Authenticate
+      # 1. Authenticate with Google
       - id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # 2. Infrastructure First (Builds the Registry/Service)
+      # 2. Setup Terraform
+      # 'terraform_wrapper: false' is the magic fix for hanging logs
+      - name: 'Setup Terraform'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      # 3. Infrastructure First (Registry & Service)
       - name: 'Terraform Apply'
-        # Setting these here covers EVERY terraform command in this step
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
           TF_VAR_webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
@@ -23,15 +29,15 @@ jobs:
           terraform init -input=false
           terraform apply -auto-approve -input=false
 
-      # 3. Docker Second (Pushes to the Registry Terraform just made)
+      # 4. Build and Push the real Docker image
       - name: 'Build & Push'
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
-          docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest .
+          docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest .
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest
 
-      # 4. Refresh Cloud Run to use the new image
-      - name: 'Deploy'
+      # 5. Final Refresh of Cloud Run
+      - name: 'Update Cloud Run'
         run: |
           gcloud run deploy hello-world-service \
             --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest \
