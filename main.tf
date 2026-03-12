@@ -29,6 +29,10 @@ resource "google_cloud_run_v2_service" "default" {
     containers {
       image = "us-docker.pkg.dev/cloudrun/container/hello" # Placeholder
       ports { container_port = 8080 }
+      env {
+        name  = "WEBHOOK_SECRET"
+        value = var.webhook_secret # Add this!
+      }
     }
   }
 }
