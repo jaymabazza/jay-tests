@@ -1,6 +1,8 @@
 name: Build and Deploy
 on: [push]
-env: 
+
+# This environment variable tells GitHub to use the newer Node.js 24 engine
+env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -16,13 +18,13 @@ jobs:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
       # 2. Setup Terraform
-      # 'terraform_wrapper: false' is the magic fix for hanging logs
+      # Added 'terraform_wrapper: false' to prevent the logs from hanging
       - name: 'Setup Terraform'
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
 
-      # 3. Infrastructure First (Registry & Service)
+      # 3. Infrastructure (Build the Registry and Service)
       - name: 'Terraform Apply'
         env:
           TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
@@ -38,7 +40,7 @@ jobs:
           docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest .
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest
 
-      # 5. Final Refresh of Cloud Run
+      # 5. Refresh Cloud Run with the new image
       - name: 'Update Cloud Run'
         run: |
           gcloud run deploy hello-world-service \
