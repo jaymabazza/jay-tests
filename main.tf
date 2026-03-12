@@ -14,6 +14,13 @@ provider "google" {
   region  = "us-central1"
 }
 
+terraform {
+  backend "gcs" {
+    bucket  = "my-terraform-state"
+    prefix  = "terraform/state"
+  }
+}
+
 # 1. Enable Required APIs
 resource "google_project_service" "run_api" {
   service = "run.googleapis.com"

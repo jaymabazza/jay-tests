@@ -14,11 +14,14 @@ jobs:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
       # 2. Infrastructure First (Builds the Registry/Service)
-      - name: 'Terraform Setup'
-        uses: hashicorp/setup-terraform@v3
-      - run: |
+      - name: 'Terraform Apply'
+        # Setting these here covers EVERY terraform command in this step
+        env:
+          TF_VAR_project_id: ${{ secrets.GCP_PROJECT_ID }}
+          TF_VAR_webhook_secret: ${{ secrets.WEBHOOK_SECRET }}
+        run: |
           terraform init -input=false
-          terraform apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+          terraform apply -auto-approve -input=false
 
       # 3. Docker Second (Pushes to the Registry Terraform just made)
       - name: 'Build & Push'
