@@ -7,32 +7,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. Authenticate with Google
+      # 1. Authenticate
       - id: 'auth'
         uses: 'google-github-actions/auth@v2'
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # 2. Terraform FIRST (Build the Warehouse/Registry)
-      - name: 'Terraform Setup & Apply'
+      # 2. Infrastructure First (Builds the Registry/Service)
+      - name: 'Terraform Setup'
         uses: hashicorp/setup-terraform@v3
       - run: |
           terraform init
           terraform apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
 
-      # 3. Docker SECOND (Build and Push the Image)
+      # 3. Docker Second (Pushes to the Registry Terraform just made)
       - name: 'Build & Push'
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
           docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest .
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest
-      
-      # 4. (Optional) Force Cloud Run to Refresh
-      # Since Terraform already created the service, sometimes you need 
-      # a final command to tell Cloud Run "Hey, the image is updated!"
-      - name: 'Deploy to Cloud Run'
+
+      # 4. Refresh Cloud Run to use the new image
+      - name: 'Deploy'
         run: |
           gcloud run deploy hello-world-service \
             --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest \
-            --region us-central1 \
-            --platform managed
+            --region us-central1
