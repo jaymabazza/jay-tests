@@ -13,16 +13,26 @@ jobs:
         with:
           credentials_json: '${{ secrets.GCP_SA_KEY }}'
 
-      # 2. Build and Push with Docker
+      # 2. Terraform FIRST (Build the Warehouse/Registry)
+      - name: 'Terraform Setup & Apply'
+        uses: hashicorp/setup-terraform@v3
+      - run: |
+          terraform init
+          terraform apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+
+      # 3. Docker SECOND (Build and Push the Image)
       - name: 'Build & Push'
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev
           docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest .
           docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest
-
-      # 3. Terraform Apply
-      - name: 'Terraform Setup'
-        uses: hashicorp/setup-terraform@v3
-      - run: |
-          terraform init
-          terraform apply -auto-approve -var="project_id=${{ secrets.GCP_PROJECT_ID }}"
+      
+      # 4. (Optional) Force Cloud Run to Refresh
+      # Since Terraform already created the service, sometimes you need 
+      # a final command to tell Cloud Run "Hey, the image is updated!"
+      - name: 'Deploy to Cloud Run'
+        run: |
+          gcloud run deploy hello-world-service \
+            --image us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/my-repo/hello-app:latest \
+            --region us-central1 \
+            --platform managed

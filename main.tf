@@ -8,6 +8,13 @@ resource "google_project_service" "run_api" {
   service = "run.googleapis.com"
 }
 
+# This creates the "my-repo" warehouse
+resource "google_artifact_registry_repository" "my-repo" {
+  location      = "us-central1"
+  repository_id = "my-repo"
+  format        = "DOCKER"
+}
+
 # 2. Define the Cloud Run Service
 resource "google_cloud_run_v2_service" "default" {
   name     = "hello-world-service"
