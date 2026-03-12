@@ -3,7 +3,7 @@
 
 terraform {
   backend "gcs" {
-    bucket = " jay-tf-state-12345" # Use the name you just created
+    bucket = "jay-tf-state-12345" # Use the name you just created
     prefix = "terraform/state"
   }
 }
