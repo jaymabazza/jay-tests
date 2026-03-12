@@ -23,7 +23,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
-
+ 
       # 3. Infrastructure (Build the Registry and Service)
       - name: 'Terraform Apply'
         env:
