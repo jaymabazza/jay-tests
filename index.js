@@ -10,7 +10,7 @@ if (!secret) {
 const port = process.env.PORT || 8080;
 
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Hello Worlds!');
 });
 
 // 2. You MUST listen on '0.0.0.0' (not localhost/127.0.0.1)
