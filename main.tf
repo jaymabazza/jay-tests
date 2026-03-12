@@ -1,6 +1,13 @@
 # 1. VARIABLE DECLARATIONS (The "Input Slots")
 # These must exist here for the TF_VAR_ environment variables in GitHub to work.
 
+terraform {
+  backend "gcs" {
+    bucket = " jay-tf-state-12345" # Use the name you just created
+    prefix = "terraform/state"
+  }
+}
+
 variable "project_id" {
   description = "The Google Cloud Project ID"
   type        = string
